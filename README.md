@@ -39,16 +39,14 @@ This project makes use of this simulator to collect data and then train a deep-l
 
 
 ### Files
-Here are the important files :
+Here are the main files in this repo:
 * model.py (script used to create and train the model)
-* drive.py (script to drive the car - feel free to modify this file)
+* drive.py (script to drive the car)
 * model.h5 (a trained Keras model)
-* a report writeup file (either markdown or pdf)
-* video.mp4 (a video recording of your vehicle driving autonomously around the track for at least one full lap)
+* video.mp4 (a video recording of the vehicle driving autonomously around the track)
 
 
-### Dependencies
-## Details About Files In This Directory
+### Details About Files
 
 ### `drive.py`
 
@@ -92,93 +90,85 @@ python video.py run1 --fps 48
 
 Will run the video at 48 FPS. The default FPS is 60.
 
-## Model Architecture and Training Strategy
 ### Solution Design
-My first step was to try the [LeNet architecture](http://yann.lecun.com/exdb/lenet/). However, the model was not successful in keeping the car on the track. Then, I experimented with other architectures. The architecture by NVIDIA's Autonomous Car Group worked very well.
+First I tried the [LeNet architecture](http://yann.lecun.com/exdb/lenet/). However, the model was not successful in keeping the car on the track. Then, I experimented with [NVDIA's end-to-end autonomous car architecture](https://devblogs.nvidia.com/deep-learning-self-driving-cars/). NVIDIA's model worked very well.
 
-Designing the data collection and preprocessing procedure was crucial in feeding the model with the high quality training data.  
+Designing the data collection and preprocessing procedure was crucial in feeding the model with the high quality training data. Here are some steps I took to enhance the training dataset:  
 
-- Since driving in the track required steering to the left most of the time, the model had a tendency to steer the car to the left. To address this issue I augmented the data with the a track data that steered to the right.  
-- The center camera by itself wasn't enough to keep the car in the center. I added the left and right camera images (with a correction factor on the angle) to help the car go back to the center.
+- Since driving in the track required steering to the left most of the time, the model had a tendency to steer the car to the left. To address this issue I augmented the data by flipping images to generate data that steered to the right.  
+- The center camera by itself wasn't enough to keep the car in the center. I added the left and right camera images to help the car go back to the center.
 - Some parts of the track had sharp turns. I needed to add more data for those challenging parts. I collected data in those parts by intentionally getting close to the outline of the road and then steering back to the center.
 
-
 ### Model Architecture
-This is the architecture I used that is based on [NVDIA's end-to-end autonomous car system](https://devblogs.nvidia.com/deep-learning-self-driving-cars/).
+The final neural network architecture uses five convolution layers to introduce nonlinearity into the model.
+
+Here is the summary of the layers of the architecture:
 
 ![Image Model Architecture][image-Model-Architeture]
 
-### Training Data
 
-Training data was chosen to keep the vehicle driving on the road. Also, the data provided by Udacity, I used the first track and second track data. The simulator provides three different images: center, left and right cameras. Each image was used to train the model.
+##### Model Parameters
+Adam optimizer is used as the optimizer. Since this model outputs a single continuous numeric value I picked mean squared error `mse` for error metric.
 
-The README describes how the model was trained and what the characteristics of the dataset are. Information such as how the dataset was generated and examples of images from the dataset must be included.
+```python
+model.compile(optimizer='adam', loss='mse')
+```
 
+
+##### Reduce Overfitting
+I used cross-validation as a preventative measure against overfitting. It is important to collect the right amount of data. The training data should include challenging cases such as driving around the turns and steering back from shoulders to the center of the track. Early stopping is another way to reduce overfitting. I used 3 epochs to train the model.
+
+Here is a guideline to use for cross-validation: If the mean squared error is high on both a training and validation set, the model is underfitting. If the mean squared error is low on a training set but high on a validation set, the model is overfitting.
+
+### Training/Validation Data
+I used Udacity's simulator in the training mode to collect training data by driving the car on the track. I used both the data provided by Udacity and the data I collected myself.
 
 
 ##### Data Collection
-I used the model is trained by the data collected in a simulator built by Udacity.
+The simulator generates images captured by 3 dashboard cams center, left and right. The `driving_log.csv` file provides the mappings of center, left and right images and the corresponding steering angle, throttle, brake and speed. For this project we only use the steering angle.
 
-We feed the data collected from Simulator to our model, this data is fed in the form of images captured by 3 dashboard cams center, left and right. The output data contains a file data.csv which has the mappings of center, left and right images and the corresponding steering angle, throttle, brake and speed.
+An important task in this project is to collect a comprehensive training dataset to train the model to respond correctly in any type of situation.
 
-Using Keras Deep learning framework we can create a model.h5 file which we can test later on simulator with the command "python drive.py model.h5". This drive.py connects your model to simulator. The challenge in this project is to collect all sorts of training data so as to train the model to respond correctly in any type of situation.
+Driving and recording normal laps around the track, even if we record a lot of them, is not enough to train the model to drive properly.
 
+Here’s the problem: if the training data is all focused on driving down the middle of the road, the model won’t ever learn what to do if it gets off to the side of the road.
 
-I am using OpenCV to load the images, by default the images are read by OpenCV in BGR format but we need to convert to RGB as in drive.py it is processed in RGB format.
-Since we have a steering angle associated with three images we introduce a correction factor for left and right images since the steering angle is captured by the center angle.
-I decided to introduce a correction factor of 0.2
-For the left images I increase the steering angle by 0.2 and for the right images I decrease the steering angle by 0.2
-Sample Image
+So we need to teach the car what to do when it’s off on the side of the road.
 
-Here is a screen shot of the simulator during the data collection.
-![Simulator][image-Simulator]
+To address this issue I recorded data by weaving back and forth between the middle of the road and the shoulder, and recording when steering back to the middle.
 
-Recovery Laps
-
-If you drive and record normal laps around the track, even if you record a lot of them, it might not be enough to train your model to drive properly.
-
-Here’s the problem: if your training data is all focused on driving down the middle of the road, your model won’t ever learn what to do if it gets off to the side of the road. And probably when you run your model to predict steering measurements, things won’t go perfectly and the car will wander off to the side of the road at some point.
-
-So you need to teach the car what to do when it’s off on the side of the road.
-
-One approach might be to constantly wander off to the side of the road and then steer back to the middle.
-
-A better approach is to only record data when the car is driving from the side of the road back toward the center line.
-
-So as the human driver, you’re still weaving back and forth between the middle of the road and the shoulder, but you need to turn off data recording when you weave out to the side, and turn it back on when you steer back to the middle.
-
-Collecting Enough Data
-How do you know when you have collected enough data? Machine learning involves trying out ideas and testing them to see if they work. If the model is over or underfitting, then try to figure out why and adjust accordingly.
-
-Since this model outputs a single continuous numeric value, one appropriate error metric would be mean squared error. If the mean squared error is high on both a training and validation set, the model is underfitting. If the mean squared error is low on a training set but high on a validation set, the model is overfitting. Collecting more data can help improve a model when the model is overfitting.
-
-What if the model has a low mean squared error on both the training and validation sets, but the car is falling off the track?
-
-Try to figure out the cases where the vehicle is falling off the track. Does it occur only on turns? Then maybe it's important to collect more turning data. The vehicle's driving behavior is only as good as the behavior of the driver who provided the data.
-
-Here are some general guidelines for data collection:
-
+This seems to be a good guideline for data collection:
 - two or three laps of center lane driving
 - one lap of recovery driving from the sides
 - one lap focusing on driving smoothly around curves
 
 
-##### Data Visualizations
+Here is a screen shot of the simulator during the data collection.
+![Simulator][image-Simulator]
+
+
+
+
 
 ##### Data Preprocessing
-My first step was to try the LeNet](http://yann.lecun.com/exdb/lenet/) model with three epochs and the training data provided by Udacity. On the first track, the car went straight to the lake. I needed to do some pre-processing. A new Lambda layer was introduced to normalize the input images to zero means. This step allows the car to move a bit further, but it didn't get to the first turn. Another Cropping layer was introduced, and the first turn was almost there, but not quite.
-
-
-I decided to shuffle the images so that the order in which images comes doesn't matters to the CNN
-Augmenting the data- i decided to flip the image horizontally and adjust steering angle accordingly, I used cv2 to flip the images.
-In augmenting after flipping multiply the steering angle by a factor of -1 to get the steering angle for the flipped image.
-So according to this approach we were able to generate 6 images corresponding to one entry in .csv file
-
+The images need to be pre-processed before used for training. Here are the steps I took:
+- used a Lambda layer to normalize the input images to zero means
+- used cropping to remove the noisy parts of the image that don't provide any useful information
+- Shuffle the images so that the order in which images comes doesn't impact the model
 
 ##### Data Augmentation
 - Augmented the data by adding the same image flipped with a negative angle.
 
 A effective technique for helping with the left turn bias involves flipping images and taking the opposite sign of the steering measurement. For example:
+
+Since we have a steering angle associated with three images we introduce a correction factor for left and right images since the steering angle is captured by the center angle.
+I decided to introduce a correction factor of 0.2
+For the left images I increase the steering angle by 0.2 and for the right images I decrease the steering angle by 0.2
+
+Augmenting the data- i decided to flip the image horizontally and adjust steering angle accordingly, I used cv2 to flip the images.
+In augmenting after flipping multiply the steering angle by a factor of -1 to get the steering angle for the flipped image.
+So according to this approach we were able to generate 6 images corresponding to one entry in .csv file
+
 
 ```Python
 import numpy as np
@@ -236,38 +226,22 @@ This is how the image looks after cropping:
 ![image-after-cropping]
 
 
-##### Generators
-
-### Model Architecture
-The neural network uses convolution layers with appropriate filter sizes. Layers exist to introduce nonlinearity into the model. The data is normalized in the model.
-
-The README provides sufficient details of the characteristics and qualities of the architecture, such as the type of model used, the number of layers, the size of each layer. Visualizations emphasizing particular qualities of the architecture are encouraged. Here is one such tool for visualization.
-
-### Training and Validation Datasets
+##### Validation Data
 I analyzed the Udacity Dataset and found out that it contains 9 laps of track 1 with recovery data. I was satisfied with the data and decided to move on.
 I decided to split the dataset into training and validation set using sklearn preprocessing library.
 I decided to keep 15% of the data in Validation Set and remaining in Training Set
 I am using generator to generate the data so as to avoid loading all the images in the memory and instead generate it at the run time in batches of 32. Even Augmented images are generated inside the generators.
 
-### Visualizing Loss
+##### Generators
 
-### Reduce Overfitting
-Train/validation/test splits have been used, and the model uses dropout layers or other methods to reduce overfitting.
-
-### Model Parameters
-Learning rate parameters are chosen with explanation, or an Adam optimizer is used.
-
-The model used an Adam optimizer, so the learning rate was not tuned manually (model.py line 146).
-
-
-## Simulation
-
-### Recording Video
 
 ### Result
+After the model is trained we save it as a file named `model.h5` that we can test in the simulator using `python drive.py model.h5` command. `drive.py` connects the model to simulator.
+
+
 No tire may leave the drivable portion of the track surface. The car may not pop up onto ledges or roll over any surfaces that would otherwise be considered unsafe (if humans were in the vehicle).
 
-[Click here to see the video of the final result](https://www.youtube.com/watch?v=VDgz93-pczQ&feature=youtu.be)
+##### Visualizing Loss
 
-### Track Two
-The simulator contains two tracks. To meet specifications, the car must successfully drive around track one. Track two is more difficult. See if you can get the car to stay on the road for track two as well.
+##### Final Video
+[Click here to see the video of the final result](https://www.youtube.com/watch?v=VDgz93-pczQ&feature=youtu.be)
