@@ -67,8 +67,6 @@ model.add(Dense(50))
 model.add(Dense(10))
 model.add(Dense(1))
 
-#model = load_model('model_00.h5')
-
 model.compile(optimizer='adam', loss='mse')
 model.fit(x_train, y_train, validation_split=0.2, shuffle=True, epochs=3)
 
