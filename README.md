@@ -236,7 +236,7 @@ def generator(samples, batch_size=32):
             batch_samples = samples[offset:offset+batch_size]
 
             # read data for this batch
-            # ...
+            # ... (for details check model.py)
             # return the data for this batch in X_train and y_train
 
             yield sklearn.utils.shuffle(X_train, y_train)
@@ -244,6 +244,12 @@ def generator(samples, batch_size=32):
 # compile and train the model using the generator function
 train_generator = generator(train_samples, batch_size=batch_size)
 validation_generator = generator(validation_samples, batch_size=batch_size)
+
+history_object = model.fit_generator(train_generator,
+            steps_per_epoch=math.ceil(len(train_samples)/batch_size),
+            validation_data=validation_generator,
+            validation_steps=math.ceil(len(validation_samples)/batch_size),
+            epochs=3, verbose=1)
 ```
 
 
