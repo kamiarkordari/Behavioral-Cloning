@@ -29,6 +29,7 @@ with open(dirname + '/driving_log.csv') as csvfile:
 sklearn.utils.shuffle(samples)
 train_samples, validation_samples = train_test_split(samples, test_size=0.2)
 
+# use generator for memory efficiency by processing data in batches
 def generator(samples, batch_size=32):
     num_samples = len(samples)
     while 1: # Loop forever so the generator never terminates
@@ -37,6 +38,7 @@ def generator(samples, batch_size=32):
             images = []
             measurements = []
             for batch_sample in batch_samples:
+                # loop to read center, left, and right images
                 for i in range(3):
                     source_path = batch_sample[i]
                     tokens = source_path.split('/')
@@ -45,6 +47,7 @@ def generator(samples, batch_size=32):
                     image = cv2.imread(local_path)
                     images.append(image)
 
+                # add steering data for each image by correcting values for right and left images
                 correction = 0.2
                 measurement = float(batch_sample[3])
                 measurements.append(measurement)
@@ -56,12 +59,12 @@ def generator(samples, batch_size=32):
             for image, measurement in zip(images, measurements):
                 augmented_images.append(image)
                 augmented_measurements.append(measurement)
+                # flip each image and add it to the dataset
                 flipped_image = cv2.flip(image, 1)
                 flipped_measurement = -1.0 * float(measurement)
                 augmented_images.append(flipped_image)
                 augmented_measurements.append(flipped_measurement)
 
-            # trim image to only see section with road
             X_train = np.array(augmented_images)
             y_train = np.array(augmented_measurements)
             yield sklearn.utils.shuffle(X_train, y_train)
@@ -73,13 +76,16 @@ batch_size = 32
 train_generator = generator(train_samples, batch_size=batch_size)
 validation_generator = generator(validation_samples, batch_size=batch_size)
 
-ch, row, col = 3, 160, 320  # Trimmed image format
+# size of the input image to model
+ch, row, col = 3, 160, 320
 
+# create model - NVDIA's end-to-end autonomous car architecture
 model = Sequential()
-# Preprocess incoming data, centered around zero with small standard deviation
+# preprocess incoming data, centered around zero with small standard deviation
 model.add(Lambda(lambda x: x/255 - 0.5,
         input_shape=(row, col, ch),
         output_shape=(row, col, ch)))
+# crop the top and bottom section of each image
 model.add(Cropping2D(cropping=((50,20), (0,0))))
 model.add(Conv2D(filters=24, kernel_size=(5, 5), strides=(2,2), activation='relu'))
 model.add(Conv2D(filters=36, kernel_size=(5, 5), strides=(2,2), activation='relu'))
