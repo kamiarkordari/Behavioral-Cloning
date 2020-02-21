@@ -223,9 +223,12 @@ Storing 10,000 simulator images that are 160 x 320 x 3 would take over 1.5 GB of
 
 Instead of storing the preprocessed data in memory all at once, I used generators to pull pieces of data and process them on the fly only when I need them. This increases memory efficiency.
 
-Here is how I used a generator: 
+Here is how I used a generator:
 
 ```Python
+# set our batch size
+batch_size=32
+
 def generator(samples, batch_size=32):
     num_samples = len(samples)
     while 1:
@@ -237,9 +240,6 @@ def generator(samples, batch_size=32):
             # return the data for this batch in X_train and y_train
 
             yield sklearn.utils.shuffle(X_train, y_train)
-
-# set our batch size
-batch_size=32
 
 # compile and train the model using the generator function
 train_generator = generator(train_samples, batch_size=batch_size)

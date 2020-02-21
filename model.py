@@ -29,6 +29,9 @@ with open(dirname + '/driving_log.csv') as csvfile:
 sklearn.utils.shuffle(samples)
 train_samples, validation_samples = train_test_split(samples, test_size=0.2)
 
+# set batch size
+batch_size = 32
+
 # use generator for memory efficiency by processing data in batches
 def generator(samples, batch_size=32):
     num_samples = len(samples)
@@ -68,9 +71,6 @@ def generator(samples, batch_size=32):
             X_train = np.array(augmented_images)
             y_train = np.array(augmented_measurements)
             yield sklearn.utils.shuffle(X_train, y_train)
-
-# set batch size
-batch_size = 32
 
 # compile and train the model using the generator function
 train_generator = generator(train_samples, batch_size=batch_size)
