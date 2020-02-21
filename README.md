@@ -108,13 +108,17 @@ The final neural network architecture uses five convolution layers followed by a
 Adam optimizer is used as the optimizer. Since this model outputs a single continuous numeric value I picked mean squared error `mse` for error metric. I chose 3 epochs to stop the training early to avoid overfitting.
 
 ```python
-model.compile(optimizer='adam', loss='mse')
-model.fit(x_train, y_train, validation_split=0.2, shuffle=True, epochs=3)
+model.compile(loss='mse', optimizer='adam')
+history_object = model.fit_generator(train_generator,
+            steps_per_epoch=math.ceil(len(train_samples)/batch_size),
+            validation_data=validation_generator,
+            validation_steps=math.ceil(len(validation_samples)/batch_size),
+            epochs=3, verbose=1)
 ```
 
 
 ##### Reduce Overfitting
-I used cross-validation as a preventative measure against overfitting. If the mean squared error is high on both a training and validation set, the model is underfitting. If the mean squared error is low on a training set but high on a validation set, the model is overfitting.
+I used cross-validation as a preventative measure against overfitting. If the mean squared error is high on both a training and validation set, the model is underfitting. If the mean squared error is low on the training set but high on a validation set, the model is overfitting.
 
 To address overfitting I collected more data specially in challenging cases such as driving around the turns and steering back from shoulders to the center of the track. I used 3 epochs to train the model and to stop training early to reduce overfitting.
 
@@ -197,7 +201,7 @@ Keras provides the Cropping2D layer for image cropping within the model. This is
 
 
 ```Python
-model.add(Cropping2D(cropping=((50,20), (0,0)), input_shape=(160,320,3)))
+model.add(Cropping2D(cropping=((50,20), (0,0))))
 ```
 This layer crops out the 50 pixels from top and 20 pixels from bottom.
 
@@ -213,6 +217,13 @@ This is how the image looks after cropping:
 
 ##### Validation Data
 After shuffling the data, I split the dataset into training and validation set by keeping 20% of the data in validation Set.
+
+##### Generators
+Storing 10,000 simulator images that are 160 x 320 x 3 would take over 1.5 GB of memory. Preprocessing data types from `int` to `float` can increase the size of the data by a factor of 4.
+
+Instead of storing the preprocessed data in memory all at once, generators can be used to pull pieces of data and process them on the fly only when we need them. This increases memory efficiency.
+
+
 
 ### Result
 I saved the trained model architecture as `model.h5` using `model.save('model.h5')`. Then, I test it in the simulator (in the autonomous mode) using `python drive.py model.h5` command.
