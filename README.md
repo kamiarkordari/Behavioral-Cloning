@@ -221,7 +221,30 @@ After shuffling the data, I split the dataset into training and validation set b
 ##### Generators
 Storing 10,000 simulator images that are 160 x 320 x 3 would take over 1.5 GB of memory. Preprocessing data types from `int` to `float` can increase the size of the data by a factor of 4.
 
-Instead of storing the preprocessed data in memory all at once, generators can be used to pull pieces of data and process them on the fly only when we need them. This increases memory efficiency.
+Instead of storing the preprocessed data in memory all at once, I used generators to pull pieces of data and process them on the fly only when I need them. This increases memory efficiency.
+
+Here is how I used a generator: 
+
+```Python
+def generator(samples, batch_size=32):
+    num_samples = len(samples)
+    while 1:
+        for offset in range(0, num_samples, batch_size):
+            batch_samples = samples[offset:offset+batch_size]
+
+            # read data for this batch
+            # ...
+            # return the data for this batch in X_train and y_train
+
+            yield sklearn.utils.shuffle(X_train, y_train)
+
+# set our batch size
+batch_size=32
+
+# compile and train the model using the generator function
+train_generator = generator(train_samples, batch_size=batch_size)
+validation_generator = generator(validation_samples, batch_size=batch_size)
+```
 
 
 
